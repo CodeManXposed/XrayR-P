@@ -90,11 +90,44 @@ download() {
     fi
 }
 
+verify_checksum() {
+    local file="$1"
+    local dgst="$2"
+    local expected=""
+    local actual=""
+
+    expected=$(awk -F'= ' '/^SHA256=/{print $2}' "${dgst}" 2>/dev/null | tr -d ' \r' | head -n 1)
+    if [[ -z "${expected}" ]]; then
+        echo -e "${yellow}校验文件无 SHA256，跳过校验。${plain}"
+        return 0
+    fi
+
+    if command_exists sha256sum; then
+        actual=$(sha256sum "${file}" | awk '{print $1}')
+    elif command_exists shasum; then
+        actual=$(shasum -a 256 "${file}" | awk '{print $1}')
+    else
+        echo -e "${yellow}缺少 sha256sum/shasum，跳过校验。${plain}"
+        return 0
+    fi
+
+    if [[ "${actual}" == "${expected}" ]]; then
+        echo -e "SHA256 校验: ${green}正常${plain}"
+        return 0
+    fi
+
+    echo -e "SHA256 校验: ${red}异常${plain}"
+    echo -e "期望: ${expected}"
+    echo -e "实际: ${actual}"
+    return 1
+}
+
 try_download_binary() {
     local repo="$1"
     local version="$2"
     local out="$3"
     local url=""
+    local dgst="${out}.dgst"
 
     if [[ -z "${version}" ]]; then
         url="https://github.com/${repo}/releases/latest/download/XrayR-linux-${arch}.zip"
@@ -104,6 +137,12 @@ try_download_binary() {
 
     echo -e "下载源: ${repo}"
     if download "${url}" "${out}"; then
+        rm -f "${dgst}"
+        if download "${url}.dgst" "${dgst}"; then
+            verify_checksum "${out}" "${dgst}" || return 1
+        else
+            echo -e "${yellow}未获取到校验文件，跳过 SHA256 校验。${plain}"
+        fi
         selected_repo="${repo}"
         return 0
     fi

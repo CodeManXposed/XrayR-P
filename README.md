@@ -81,6 +81,19 @@ bash <(curl -fsSL https://raw.githubusercontent.com/CodeManXposed/XrayR-P/main/i
 
 安装脚本默认优先下载本仓库 Release，旧源仅作为备用下载源。
 
+安装后可使用数字菜单：
+
+```
+XrayR
+```
+
+常用检测命令：
+
+```
+XrayR unlock   # DNS / 流媒体 / AI 解锁测试
+XrayR reality  # VLESS / REALITY 本地配置自检
+```
+
 ### 使用Docker部署软件
 
 [Docker部署教程](https://xrayr-project.github.io/XrayR-doc/xrayr-xia-zai-he-an-zhuang/install/docker)
@@ -113,4 +126,3 @@ bash <(curl -fsSL https://raw.githubusercontent.com/CodeManXposed/XrayR-P/main/i
 ## Stargazers over time
 
 [![Stargazers over time](https://starchart.cc/metamoss/XrayR.svg)](https://starchart.cc/metamoss/XrayR)
-
