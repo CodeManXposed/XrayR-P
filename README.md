@@ -70,8 +70,16 @@ A Xray backend framework that can easily support many panels.
 ### 一键安装
 
 ```
-wget -N https://raw.githubusercontent.com/metamoss/XrayR-release/master/install.sh && bash install.sh
+wget -N https://raw.githubusercontent.com/CodeManXposed/XrayR-P/main/install.sh && bash install.sh
 ```
+
+或：
+
+```
+bash <(curl -fsSL https://raw.githubusercontent.com/CodeManXposed/XrayR-P/main/install.sh)
+```
+
+安装脚本默认优先下载本仓库 Release，旧源仅作为备用下载源。
 
 ### 使用Docker部署软件
 
@@ -105,5 +113,4 @@ wget -N https://raw.githubusercontent.com/metamoss/XrayR-release/master/install.
 ## Stargazers over time
 
 [![Stargazers over time](https://starchart.cc/metamoss/XrayR.svg)](https://starchart.cc/metamoss/XrayR)
-
 
