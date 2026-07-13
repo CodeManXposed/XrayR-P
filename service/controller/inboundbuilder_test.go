@@ -73,6 +73,7 @@ func TestBuildSS(t *testing.T) {
 		Port:              1145,
 		SpeedLimit:        0,
 		AlterID:           2,
+		CypherMethod:      "aes-128-gcm",
 		TransportProtocol: "tcp",
 		Host:              "test.test.tk",
 		Path:              "v2ray",

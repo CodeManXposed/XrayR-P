@@ -48,7 +48,7 @@ func (c *Controller) buildVlessUser(userInfo *[]api.UserInfo) (users []*protocol
 	for i, user := range *userInfo {
 		vlessAccount := &vless.Account{
 			Id:   user.UUID,
-			Flow: c.nodeInfo.VlessFlow,
+			Flow: vlessFlowForNode(c.nodeInfo),
 		}
 		users[i] = &protocol.User{
 			Level:   0,
@@ -57,6 +57,13 @@ func (c *Controller) buildVlessUser(userInfo *[]api.UserInfo) (users []*protocol
 		}
 	}
 	return users
+}
+
+func vlessFlowForNode(nodeInfo *api.NodeInfo) string {
+	if nodeInfo.VlessFlow == "" && nodeInfo.EnableREALITY && strings.EqualFold(nodeInfo.TransportProtocol, "tcp") {
+		return "xtls-rprx-vision"
+	}
+	return nodeInfo.VlessFlow
 }
 
 func (c *Controller) buildTrojanUser(userInfo *[]api.UserInfo) (users []*protocol.User) {
@@ -90,7 +97,7 @@ func (c *Controller) buildSSUser(userInfo *[]api.UserInfo, method string) (users
 				Level: 0,
 				Email: e,
 				Account: serial.ToTypedMessage(&shadowsocks_2022.Account{
-					Key:   userKey,
+					Key: userKey,
 				}),
 			}
 		} else {
@@ -123,7 +130,7 @@ func (c *Controller) buildSSPluginUser(userInfo *[]api.UserInfo) (users []*proto
 				Level: 0,
 				Email: e,
 				Account: serial.ToTypedMessage(&shadowsocks_2022.Account{
-					Key:   userKey,
+					Key: userKey,
 				}),
 			}
 		} else {

@@ -98,6 +98,9 @@ func InboundBuilder(config *Config, nodeInfo *api.NodeInfo, tag string) (*core.I
 	case "Shadowsocks", "Shadowsocks-Plugin":
 		protocol = "shadowsocks"
 		cipher := strings.ToLower(nodeInfo.CypherMethod)
+		if cipher == "" {
+			return nil, fmt.Errorf("shadowsocks cipher method is required")
+		}
 
 		proxySetting = &conf.ShadowsocksServerConfig{
 			Cipher:   cipher,

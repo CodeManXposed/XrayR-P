@@ -5,7 +5,7 @@ green='\033[0;32m'
 yellow='\033[0;33m'
 plain='\033[0m'
 
-script_version="v0.9.6-p2"
+script_version="v0.9.7"
 install_url="https://raw.githubusercontent.com/CodeManXposed/XrayR-P/main/install.sh"
 install_backup_url="https://raw.githubusercontent.com/unicorncross/XrayR-onekey-install/main/install.sh"
 shell_url="https://raw.githubusercontent.com/CodeManXposed/XrayR-P/main/XrayR.sh"
