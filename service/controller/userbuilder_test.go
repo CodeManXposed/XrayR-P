@@ -37,3 +37,33 @@ func TestVlessFlowForNode(t *testing.T) {
 		})
 	}
 }
+
+func TestBuildSSUserSkipsInvalidShadowsocks2022Key(t *testing.T) {
+	controller := &Controller{panelType: "NewV2board", Tag: "node"}
+	userInfo := []api.UserInfo{{
+		UID:    1,
+		Email:  "invalid@example.com",
+		Passwd: "too-short",
+	}}
+
+	users := controller.buildSSUser(&userInfo, "2022-blake3-aes-256-gcm")
+	if len(users) != 0 {
+		t.Fatalf("buildSSUser() returned %d users, want 0", len(users))
+	}
+}
+
+func TestBuildSSPluginUserDoesNotReturnNilEntries(t *testing.T) {
+	controller := &Controller{panelType: "NewV2board", Tag: "node"}
+	userInfo := []api.UserInfo{
+		{UID: 1, Email: "valid@example.com", Passwd: "password", Method: "aes-128-gcm"},
+		{UID: 2, Email: "invalid@example.com", Passwd: "password", Method: "unsupported"},
+	}
+
+	users := controller.buildSSPluginUser(&userInfo)
+	if len(users) != 1 {
+		t.Fatalf("buildSSPluginUser() returned %d users, want 1", len(users))
+	}
+	if users[0] == nil {
+		t.Fatal("buildSSPluginUser() returned a nil user")
+	}
+}

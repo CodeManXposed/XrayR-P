@@ -94,12 +94,12 @@ func readLocalRuleList(path string) (LocalRuleList []api.DetectRule) {
 	if path != "" {
 		// open the file
 		file, err := os.Open(path)
-		defer file.Close()
 		// handle errors while opening
 		if err != nil {
 			log.Printf("Error when opening file: %s", err)
 			return LocalRuleList
 		}
+		defer file.Close()
 
 		fileScanner := bufio.NewScanner(file)
 
@@ -369,7 +369,6 @@ func (c *APIClient) parseV2rayNodeResponse(s *serverConfig) (*api.NodeInfo, erro
 		enableTLS     bool
 		enableREALITY bool
 		dest          string
-		xVer          uint64
 	)
 
 	if s.VlessTlsSettings.Dest != "" {
@@ -377,15 +376,9 @@ func (c *APIClient) parseV2rayNodeResponse(s *serverConfig) (*api.NodeInfo, erro
 	} else {
 		dest = s.VlessTlsSettings.Sni
 	}
-	if s.VlessTlsSettings.xVer != 0 {
-		xVer = s.VlessTlsSettings.xVer
-	} else {
-		xVer = 0
-	}
-
 	realityConfig := api.REALITYConfig{
 		Dest:             dest + ":" + s.VlessTlsSettings.ServerPort,
-		ProxyProtocolVer: xVer,
+		ProxyProtocolVer: s.VlessTlsSettings.XVer,
 		ServerNames:      []string{s.VlessTlsSettings.Sni},
 		PrivateKey:       s.VlessTlsSettings.PrivateKey,
 		ShortIds:         []string{s.VlessTlsSettings.ShortId},

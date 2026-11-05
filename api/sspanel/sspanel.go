@@ -95,18 +95,12 @@ func readLocalRuleList(path string) (LocalRuleList []api.DetectRule) {
 	if path != "" {
 		// open the file
 		file, err := os.Open(path)
-
-		defer func(file *os.File) {
-			err := file.Close()
-			if err != nil {
-				log.Printf("Error when closing file: %s", err)
-			}
-		}(file)
 		// handle errors while opening
 		if err != nil {
 			log.Printf("Error when opening file: %s", err)
 			return LocalRuleList
 		}
+		defer file.Close()
 
 		fileScanner := bufio.NewScanner(file)
 
@@ -146,7 +140,7 @@ func (c *APIClient) parseResponse(res *resty.Response, path string, err error) (
 		return nil, fmt.Errorf("request %s failed: %s", c.assembleURL(path), err)
 	}
 
-	if res.StatusCode() > 400 {
+	if res.StatusCode() >= 400 {
 		body := res.Body()
 		return nil, fmt.Errorf("request %s failed: %s, %v", c.assembleURL(path), string(body), err)
 	}

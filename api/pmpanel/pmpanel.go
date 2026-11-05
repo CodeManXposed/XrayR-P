@@ -124,7 +124,7 @@ func (c *APIClient) parseResponse(res *resty.Response, path string, err error) (
 		return nil, fmt.Errorf("request %s failed: %s", c.assembleURL(path), err)
 	}
 
-	if res.StatusCode() > 400 {
+	if res.StatusCode() >= 400 {
 		body := res.Body()
 		return nil, fmt.Errorf("request %s failed: %s, %s", c.assembleURL(path), string(body), err)
 	}
@@ -139,7 +139,7 @@ func (c *APIClient) parseResponse(res *resty.Response, path string, err error) (
 
 // GetNodeInfo will pull NodeInfo Config from sspanel
 func (c *APIClient) GetNodeInfo() (nodeInfo *api.NodeInfo, err error) {
-	path := fmt.Sprintf("/api/node")
+	path := "/api/node"
 	var nodeType = ""
 	switch c.NodeType {
 	case "Shadowsocks":
@@ -149,7 +149,7 @@ func (c *APIClient) GetNodeInfo() (nodeInfo *api.NodeInfo, err error) {
 	case "Trojan":
 		nodeType = "trojan"
 	default:
-		return nil, fmt.Errorf("NodeType Error: %s", c.NodeType)
+		return nil, fmt.Errorf("node type error: %s", c.NodeType)
 	}
 	// body := fmt.Sprintf(`{"type":"%s", "nodeId":%d}`, nodeType, c.NodeID)
 	res, err := c.client.R().
@@ -184,7 +184,7 @@ func (c *APIClient) GetNodeInfo() (nodeInfo *api.NodeInfo, err error) {
 
 	if err != nil {
 		res, _ := json.Marshal(nodeInfoResponse)
-		return nil, fmt.Errorf("Parse node info failed: %s, \nError: %s", string(res), err)
+		return nil, fmt.Errorf("parse node info failed: %s, error: %s", string(res), err)
 	}
 
 	return nodeInfo, nil

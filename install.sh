@@ -11,8 +11,6 @@ backup_repos=("metamoss/XrayR" "XrayR-project/XrayR" "HungSoKie/XrayR")
 raw_main="https://raw.githubusercontent.com/CodeManXposed/XrayR-P/main"
 raw_backup="https://raw.githubusercontent.com/unicorncross/XrayR-onekey-install/main"
 
-[[ $EUID -ne 0 ]] && echo -e "${red}错误:${plain} 必须使用 root 用户运行此脚本！" && exit 1
-
 command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
@@ -96,10 +94,10 @@ verify_checksum() {
     local expected=""
     local actual=""
 
-    expected=$(awk -F'= ' '/^SHA256=/{print $2}' "${dgst}" 2>/dev/null | tr -d ' \r' | head -n 1)
+    expected=$(awk -F'= ' '/^(SHA256|SHA2-256)=/{print $2}' "${dgst}" 2>/dev/null | tr -d ' \r' | head -n 1)
     if [[ -z "${expected}" ]]; then
-        echo -e "${yellow}校验文件无 SHA256，跳过校验。${plain}"
-        return 0
+        echo -e "${red}校验文件中没有可用的 SHA-256 值。${plain}"
+        return 1
     fi
 
     if command_exists sha256sum; then
@@ -232,9 +230,46 @@ check_status() {
     return 1
 }
 
+cleanup_stage() {
+    local stage_dir="$1"
+    case "${stage_dir}" in
+        /usr/local/XrayR/.install.*)
+            rm -rf -- "${stage_dir}"
+            ;;
+    esac
+}
+
+stage_release() {
+    local archive="$1"
+    local stage_dir="$2"
+
+    if ! unzip -tq "${archive}" >/dev/null; then
+        echo -e "${red}下载的 XrayR 压缩包已损坏。${plain}"
+        return 1
+    fi
+    if ! unzip -q "${archive}" -d "${stage_dir}"; then
+        echo -e "${red}无法解压 XrayR 发行包。${plain}"
+        return 1
+    fi
+    if [[ ! -f "${stage_dir}/XrayR" ]]; then
+        echo -e "${red}发行包中缺少 XrayR 主程序。${plain}"
+        return 1
+    fi
+
+    chmod +x "${stage_dir}/XrayR"
+    if ! "${stage_dir}/XrayR" version >/dev/null 2>&1; then
+        echo -e "${red}XrayR 主程序无法在当前系统运行。${plain}"
+        return 1
+    fi
+}
+
 install_XrayR() {
     local version
     local had_config=0
+    local archive="/usr/local/XrayR/XrayR-linux.zip"
+    local stage_dir=""
+    local target_binary="/usr/local/XrayR/XrayR"
+    local backup_binary="/usr/local/XrayR/XrayR.previous"
     version=$(normalize_version "$1")
     [[ -f /etc/XrayR/config.yml ]] && had_config=1
 
@@ -249,32 +284,74 @@ install_XrayR() {
     fi
     download_binary "${version}"
 
+    stage_dir=$(mktemp -d /usr/local/XrayR/.install.XXXXXX) || {
+        echo -e "${red}无法创建临时安装目录。${plain}"
+        exit 1
+    }
+    if ! stage_release "${archive}" "${stage_dir}"; then
+        cleanup_stage "${stage_dir}"
+        exit 1
+    fi
+
+    # Download all network-controlled files before stopping a running service.
+    install_manager
+
+    rm -f "${backup_binary}"
+    if [[ -f "${target_binary}" ]]; then
+        cp -p "${target_binary}" "${backup_binary}" || {
+            cleanup_stage "${stage_dir}"
+            echo -e "${red}无法备份当前 XrayR 主程序。${plain}"
+            exit 1
+        }
+    fi
+
     systemctl stop XrayR >/dev/null 2>&1 || true
-    unzip -o XrayR-linux.zip >/dev/null
-    rm -f XrayR-linux.zip
-    chmod +x /usr/local/XrayR/XrayR
+    for release_file in README.md LICENSE config.yml dns.json route.json custom_outbound.json custom_inbound.json rulelist geoip.dat geosite.dat; do
+        if [[ -f "${stage_dir}/${release_file}" ]]; then
+            cp -f "${stage_dir}/${release_file}" "/usr/local/XrayR/${release_file}"
+        fi
+    done
+    if ! install -m 0755 "${stage_dir}/XrayR" "${target_binary}.new" || ! mv -f "${target_binary}.new" "${target_binary}"; then
+        cleanup_stage "${stage_dir}"
+        rm -f "${target_binary}.new"
+        echo -e "${red}无法安装 XrayR 主程序。${plain}"
+        exit 1
+    fi
+    cleanup_stage "${stage_dir}"
+    rm -f "${archive}" "${archive}.dgst"
 
     copy_config_if_missing
     install_service
-    install_manager
 
     if [[ "${had_config}" == "1" ]]; then
         systemctl restart XrayR >/dev/null 2>&1 || true
+        sleep 2
+        if ! check_status; then
+            echo -e "${red}新版 XrayR 启动失败。${plain}"
+            if [[ -f "${backup_binary}" ]]; then
+                echo -e "${yellow}正在回滚到上一个可用版本。${plain}"
+                mv -f "${backup_binary}" "${target_binary}"
+                systemctl restart XrayR >/dev/null 2>&1 || true
+            fi
+            cd "${cur_dir}" || true
+            echo -e "${red}更新已回滚，请执行 XrayR log 查看新版启动失败原因。${plain}"
+            exit 1
+        fi
+        rm -f "${backup_binary}"
     else
         echo -e "${yellow}首次安装已写入示例配置，请先编辑 /etc/XrayR/config.yml，然后执行 XrayR start。${plain}"
+        rm -f "${backup_binary}"
     fi
 
     echo -e "${green}XrayR 安装完成。${plain}"
     echo -e "实际下载源: ${green}${selected_repo}${plain}"
-    check_status
-    case $? in
-        0) echo -e "运行状态: ${green}正常${plain}" ;;
-        1) echo -e "运行状态: ${red}异常${plain}，请执行 ${yellow}XrayR log${plain} 查看日志。" ;;
-        2) echo -e "运行状态: ${yellow}未安装${plain}" ;;
-    esac
+    if [[ "${had_config}" == "0" ]]; then
+        echo -e "运行状态: ${yellow}等待完成首次配置${plain}"
+    else
+        echo -e "运行状态: ${green}正常${plain}"
+    fi
 
     cd "${cur_dir}" || exit 0
-    rm -f install.sh
     echo ""
     echo "XrayR 管理脚本:"
     echo "------------------------------------------"
@@ -291,7 +368,14 @@ install_XrayR() {
     echo "------------------------------------------"
 }
 
-detect_release
-detect_arch
-install_base
-install_XrayR "$1"
+main() {
+    [[ $EUID -ne 0 ]] && echo -e "${red}错误:${plain} 必须使用 root 用户运行此脚本！" && exit 1
+    detect_release
+    detect_arch
+    install_base
+    install_XrayR "$1"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    main "$@"
+fi

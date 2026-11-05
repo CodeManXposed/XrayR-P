@@ -89,7 +89,10 @@ func (c *Controller) addUsers(users []*protocol.User, tag string) error {
 	if !ok {
 		return fmt.Errorf("handler %s has not implemented proxy.UserManager", tag)
 	}
-	for _, item := range users {
+	for index, item := range users {
+		if item == nil {
+			return fmt.Errorf("user at index %d is invalid", index)
+		}
 		mUser, err := item.ToMemoryUser()
 		if err != nil {
 			return err
@@ -101,12 +104,8 @@ func (c *Controller) addUsers(users []*protocol.User, tag string) error {
 		// Pre-register per-user traffic counters so core can increment them (downlink/uplink)
 		uName := "user>>>" + mUser.Email + ">>>traffic>>>uplink"
 		dName := "user>>>" + mUser.Email + ">>>traffic>>>downlink"
-		if _, _ = stats.GetOrRegisterCounter(c.stm, uName); true {
-			// no-op
-		}
-		if _, _ = stats.GetOrRegisterCounter(c.stm, dName); true {
-			// no-op
-		}
+		_, _ = stats.GetOrRegisterCounter(c.stm, uName)
+		_, _ = stats.GetOrRegisterCounter(c.stm, dName)
 	}
 	return nil
 }

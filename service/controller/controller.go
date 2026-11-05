@@ -153,7 +153,7 @@ func (c *Controller) Start() error {
 	)
 
 	// Check cert service in need
-	if c.nodeInfo.EnableTLS && c.config.EnableREALITY == false {
+	if c.nodeInfo.EnableTLS && !c.config.EnableREALITY {
 		c.tasks = append(c.tasks, periodicTask{
 			tag: "cert monitor",
 			Periodic: &task.Periodic{
@@ -405,7 +405,7 @@ func (c *Controller) addInboundForSSPlugin(newNodeInfo api.NodeInfo) (err error)
 }
 
 func (c *Controller) addNewUser(userInfo *[]api.UserInfo, nodeInfo *api.NodeInfo) (err error) {
-	users := make([]*protocol.User, 0)
+	var users []*protocol.User
 	switch nodeInfo.NodeType {
 	case "V2ray", "Vmess", "Vless":
 		if nodeInfo.EnableVless || (nodeInfo.NodeType == "Vless" && nodeInfo.NodeType != "Vmess") {
@@ -427,7 +427,7 @@ func (c *Controller) addNewUser(userInfo *[]api.UserInfo, nodeInfo *api.NodeInfo
 	if err != nil {
 		return err
 	}
-	c.logger.Printf("Added %d new users", len(*userInfo))
+	c.logger.Printf("Added %d new users", len(users))
 	return nil
 }
 
@@ -446,9 +446,7 @@ func compareUserList(old, new *[]api.UserInfo) (deleted, added []api.UserInfo) {
 	for _, v := range *new {
 		l := len(mAll)
 		mAll[v] = 1
-		if l != len(mAll) { // 长度变化，即可以存
-			l = len(mAll)
-		} else { // 存不了，进并集
+		if l == len(mAll) { // 存不了，进并集
 			set = append(set, v)
 		}
 	}
@@ -624,17 +622,17 @@ func (c *Controller) buildNodeTag() string {
 
 // Check Cert
 func (c *Controller) certMonitor() error {
-	if c.nodeInfo.EnableTLS && c.config.EnableREALITY == false {
+	if c.nodeInfo.EnableTLS && !c.config.EnableREALITY {
 		switch c.config.CertConfig.CertMode {
 		case "dns", "http", "tls":
 			lego, err := mylego.New(c.config.CertConfig)
 			if err != nil {
-				c.logger.Print(err)
+				return err
 			}
 			// Xray-core supports the OcspStapling certification hot renew
 			_, _, _, err = lego.RenewCert()
 			if err != nil {
-				c.logger.Print(err)
+				return err
 			}
 		}
 	}
