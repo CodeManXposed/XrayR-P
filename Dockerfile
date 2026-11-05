@@ -1,10 +1,16 @@
-# Build go
-FROM golang:1.25.3-alpine AS builder
+# syntax=docker/dockerfile:1
+
+# Build Go on the native runner and cross-compile for the target platform.
+FROM --platform=$BUILDPLATFORM golang:1.25.3-alpine AS builder
+ARG TARGETOS
+ARG TARGETARCH
+ARG TARGETVARIANT
 WORKDIR /app
 COPY . .
 ENV CGO_ENABLED=0
 RUN go mod download
-RUN go build -v -o XrayR -trimpath -ldflags "-s -w -buildid="
+RUN GOOS="$TARGETOS" GOARCH="$TARGETARCH" GOARM="${TARGETVARIANT#v}" \
+    go build -v -o XrayR -trimpath -ldflags "-s -w -buildid="
 
 # Release
 FROM  alpine
