@@ -25,7 +25,27 @@ permissions:
 
 jobs:
 
+  test:
+    runs-on: ubuntu-latest
+    env:
+      CGO_ENABLED: 0
+    steps:
+      - name: Checkout codebase
+        uses: actions/checkout@v6
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          check-latest: true
+      - name: Run unit tests
+        run: go test ./...
+      - name: Test installation scripts
+        run: |
+          bash -n install.sh XrayR.sh tests/install_test.sh
+          bash tests/install_test.sh
+
   build:
+    needs: test
     strategy:
       matrix:
         # Include amd64 on all platforms.
@@ -172,10 +192,10 @@ jobs:
           popd || exit 1
           FILE=./XrayR-$ASSET_NAME.zip
           DGST=$FILE.dgst
-          for METHOD in {"md5","sha1","sha256","sha512"}
-          do
-            openssl dgst -$METHOD $FILE | sed 's/([^)]*)//g' >>$DGST
-          done
+          echo "MD5= $(openssl dgst -md5 "$FILE" | awk '{print $NF}')" >>"$DGST"
+          echo "SHA1= $(openssl dgst -sha1 "$FILE" | awk '{print $NF}')" >>"$DGST"
+          echo "SHA256= $(openssl dgst -sha256 "$FILE" | awk '{print $NF}')" >>"$DGST"
+          echo "SHA512= $(openssl dgst -sha512 "$FILE" | awk '{print $NF}')" >>"$DGST"
       - name: Change the name
         run: |
           mv build_assets XrayR-$ASSET_NAME
